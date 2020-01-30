@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
+#include <stdint.h>
+
+////////////
+// COLORS //
+////////////
 
 char* red = "[0;31m";
 char* bold_red = "[1;31m";
@@ -36,24 +41,39 @@ void parse_opt(int argc, char* argv[]) {
   argv += optind;
 }
 
+//////////////////
+// DISASSEMBLER //
+//////////////////
+
+unsigned int current_addr = 0x200; // start address is 0x200
+
+unsigned int byte1 = 0;
+unsigned int byte2 = 0;
+
+unsigned int nibble1 = 0;
+unsigned int nibble2 = 0;
+unsigned int nibble3 = 0;
+unsigned int nibble4 = 0;
+
 int main(int argc, char* argv[]) {
   parse_opt(argc, argv);
-
-  unsigned int word1 = 0;
-  unsigned int word2 = 0;
-  unsigned int addr = 0;
   
-  // read 1 byte into word1 and word2
-  while(fscanf( stdin, "%1c%1c", (char*) &word1, (char*) &word2) == 2) {
-
+  // read 1 byte into byte1 and byte2 each
+  while(fscanf( stdin, "%1c%1c", (char*) &byte1, (char*) &byte2) == 2) {
 
     color(bold_blue);
-    printf("0x%0X\t", addr);
+    printf("0x%0X:\t", current_addr);
+
+    // extract nibbles using bit masks
+    nibble1 = (byte1 & 0xF0) >> 4;
+    nibble2 = byte1 & 0xF;
+    nibble3 = (byte2 & 0xF0) >> 4;
+    nibble4 = byte2 & 0xF;
 
     color(bold_yellow);
-    printf("0x%02X%02X \n", word1, word2);
+    printf("0x%0X%0X%0X%0X\n", nibble1, nibble2, nibble3, nibble4);
 
-    addr += 2;
+    current_addr += 2;
   }
 }
 
