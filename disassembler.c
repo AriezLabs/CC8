@@ -66,33 +66,155 @@ unsigned short instruction = 0;
 char* instruction_string;
 
 int decodeF() {
-  
+  char* i;
+  char* r;
+
+  switch (instruction & 0xF0FF) {
+    case 0xF015: // LD reg into delay timer
+      i = "LD";
+      r = "DT";
+      break;
+    case 0xF018: // LD reg into sound timer
+      i = "LD";
+      r = "ST";
+      break;
+    case 0xF01E: // ADD I + reg
+      i = "ADD";
+      r = "I";
+      break;
+    case 0xF029: // LD ptr to sprite &Vx into I
+      i = "LD";
+      r = "F";
+      break;
+    case 0xF033: // LD decimal of VX into [I]
+      i = "LD";
+      r = "B";
+      break;
+    case 0xF055: // LD V0-Vx into [I]
+      i = "LD";
+      r = "[I]";
+      break;
+    case 0xF007: // LD delay timer into reg
+      color(*color_iname);
+      printf("LD\t");
+      color(*color_register);
+      printf("V%X\t", (instruction & 0xF00) >> 8);
+      printf("DT\n");
+      return SUCCESS;
+    case 0xF00A: // LD key press id
+      color(*color_iname);
+      printf("LD\t");
+      color(*color_register);
+      printf("V%X\t", (instruction & 0xF00) >> 8);
+      printf("K\n");
+      return SUCCESS;
+    case 0xF065: //  LD mem starting at I into V0-Vx
+      color(*color_iname);
+      printf("LD\t");
+      color(*color_register);
+      printf("V%X\t", (instruction & 0xF00) >> 8);
+      printf("[I]\n");
+      return SUCCESS;
+    default:
+      return FAILED;
+  }
+
+  color(*color_iname);
+  printf("%s\t", i);
+  color(*color_register);
+  printf("%s\t", r);
+  printf("V%X\n", (instruction & 0xF00) >> 8);
+  return SUCCESS;
 }
 
+// SKP SKNP
 int decodeE() {
-  
+  char* s;
+
+  switch (instruction & 0xF0FF) {
+    case 0xE09E: // skip if pressed
+      s = "SKP";
+      break;
+    case 0xE0A1: // skip if not pressed
+      s = "SKNP";
+      break;
+    default:
+      return FAILED;
+  }
+
+  color(*color_iname);
+  printf("%s\t", s);
+    color(*color_register);
+  printf("V%X\n",
+    (instruction & 0xF00) >> 8);
+  return SUCCESS;
 }
 
+// DRW
 int decodeD() {
-  
+  color(*color_iname);
+  printf("DRW\t");
+  color(*color_register);
+  printf("V%X\t",
+      (instruction & 0xF00) >> 8);
+  printf("V%X\t", 
+      (instruction & 0xF0) >> 4);
+  color(*color_constant);
+  printf("0x%X\n", instruction & 0x000F);
+  return SUCCESS;
 }
 
+// RND
 int decodeC() {
-  
+  color(*color_iname);
+  printf("RND\t");
+  color(*color_register);
+  printf("V%X\t", (instruction & 0x0F00) >> 8);
+  color(*color_constant);
+  printf("0x%02X\n", instruction & 0x00FF);
+  return SUCCESS;
 }
 
+// JP
 int decodeB() {
-  
+  color(*color_iname);
+  printf("JP\t");
+  color(*color_register);
+  printf("V0\t");
+  color(*color_constant);
+  printf("0x%03X\n", instruction & 0x0FFF);
+  return SUCCESS;
 }
 
+// LD
 int decodeA() {
-
+  color(*color_iname);
+  printf("LD\t");
+  color(*color_register);
+  printf("I\t");
+  color(*color_constant);
+  printf("0x%03X\n", instruction & 0x0FFF);
+  return SUCCESS;
 }
 
+// SNE
 int decode9() {
-  
+  if ((instruction & 0xF00F) == 0x9000) {
+    color(*color_iname);
+    printf("SNE\t");
+    color(*color_register);
+    printf("V%X\t",
+        (instruction & 0xF00) >> 8);
+    printf("V%X\n", 
+        (instruction & 0xF0) >> 4);
+
+    return SUCCESS;
+  } else {
+    return FAILED;
+  }
 }
 
+// SHL SUBN SHR SUB ADD XOR AND OR LD
 int decode8() {
   char* s;
 
@@ -128,9 +250,12 @@ int decode8() {
       return FAILED;
   }
 
-  printf("%s V%X V%X\n", 
-      s,
-      (instruction & 0xF00) >> 8, 
+  color(*color_iname);
+  printf("%s\t", s);
+  color(*color_register);
+  printf("V%X\t",
+      (instruction & 0xF00) >> 8);
+  printf("V%X\n", 
       (instruction & 0xF0) >> 4);
 
   return SUCCESS;
@@ -259,18 +384,18 @@ int main(int argc, char* argv[]) {
   // read 1 byte into byte1 and byte2 each
   while(fscanf( stdin, "%1c%1c", (char*) &byte1, (char*) &byte2) == 2) {
 
-    color(*color_address);
-    printf("0x%0X:\t", current_addr);
-
     instruction |= byte1 << 8;
     instruction |= byte2;
+
+    color(*color_address);
+    printf("0x%0X:\t", current_addr);
 
     color(*color_opcode);
     printf("0x%04X\t", instruction);
 
     if (decoder[instruction >> 12]() == FAILED) {
       color(*color_unknown);
-      puts("UNKNOWN INSTRUCTION");
+      puts("UNKNOWN");
     }
 
     instruction = 0;
