@@ -4,15 +4,21 @@
 #include <getopt.h>
 #include <stdint.h>
 #include <errno.h>
-#include "colors.h"
 
-const char* version = "0.1";
-const char* nickname = "useless garbage";
+#include "colors.h"
+#include "CC8.h"
+
+const char* version = "0.2";
+const char* nickname = "semi useless garbage";
 
 const int SUCCESS = 0;
 const int FAILED  = 1;
 
+const int INITIAL_PC = 0x200;
+
 FILE* in;
+
+short mem[4096] = {};
 
 //////////////////
 // DISASSEMBLER //
@@ -25,16 +31,7 @@ char** color_constant = &yellow;
 char** color_register = &bold_green;
 char** color_unknown = &bold_red;
 
-unsigned int current_addr = 0x200; // start address is 0x200
-
-unsigned short byte1 = 0;
-unsigned short byte2 = 0;
-
-unsigned short instruction = 0;
-
-char* instruction_string;
-
-int decodeF() {
+int decodeF(int instruction) {
   char* i;
   char* r;
 
@@ -97,7 +94,7 @@ int decodeF() {
 }
 
 // SKP SKNP
-int decodeE() {
+int decodeE(int instruction) {
   char* s;
 
   switch (instruction & 0xF0FF) {
@@ -120,7 +117,7 @@ int decodeE() {
 }
 
 // DRW
-int decodeD() {
+int decodeD(int instruction) {
   color(*color_iname);
   printf("DRW\t");
   color(*color_register);
@@ -134,7 +131,7 @@ int decodeD() {
 }
 
 // RND
-int decodeC() {
+int decodeC(int instruction) {
   color(*color_iname);
   printf("RND\t");
   color(*color_register);
@@ -145,7 +142,7 @@ int decodeC() {
 }
 
 // JP
-int decodeB() {
+int decodeB(int instruction) {
   color(*color_iname);
   printf("JP\t");
   color(*color_register);
@@ -156,7 +153,7 @@ int decodeB() {
 }
 
 // LD
-int decodeA() {
+int decodeA(int instruction) {
   color(*color_iname);
   printf("LD\t");
   color(*color_register);
@@ -167,7 +164,7 @@ int decodeA() {
 }
 
 // SNE
-int decode9() {
+int decode9(int instruction) {
   if ((instruction & 0xF00F) == 0x9000) {
     color(*color_iname);
     printf("SNE\t");
@@ -184,7 +181,7 @@ int decode9() {
 }
 
 // SHL SUBN SHR SUB ADD XOR AND OR LD
-int decode8() {
+int decode8(int instruction) {
   char* s;
 
   switch (instruction & 0x000F) {
@@ -231,7 +228,7 @@ int decode8() {
 }
 
 // ADD
-int decode7() {
+int decode7(int instruction) {
   color(*color_iname);
   printf("ADD\t");
   color(*color_register);
@@ -245,7 +242,7 @@ int decode7() {
 }
 
 // LD 
-int decode6() {
+int decode6(int instruction) {
   color(*color_iname);
   printf("LD\t");
   color(*color_register);
@@ -259,7 +256,7 @@ int decode6() {
 }
 
 // SE if equal egisters
-int decode5() {
+int decode5(int instruction) {
   if ((instruction & 0xF00F) == 0x5000) {
     color(*color_iname);
     printf("SE\t");
@@ -276,7 +273,7 @@ int decode5() {
 }
 
 // SNE skip not equal
-int decode4() {
+int decode4(int instruction) {
   color(*color_iname);
   printf("SNE\t");
   color(*color_register);
@@ -290,7 +287,7 @@ int decode4() {
 }
 
 // SE skip if equal
-int decode3() {
+int decode3(int instruction) {
   color(*color_iname);
   printf("SE\t");
   color(*color_register);
@@ -304,7 +301,7 @@ int decode3() {
 }
 
 // CALL
-int decode2() {
+int decode2(int instruction) {
   color(*color_iname);
   printf("CALL\t");
   color(*color_constant);
@@ -315,7 +312,7 @@ int decode2() {
 }
 
 // JUMP
-int decode1() {
+int decode1(int instruction) {
   color(*color_iname);
   printf("JP\t");
   color(*color_constant);
@@ -326,7 +323,7 @@ int decode1() {
 }
 
 // SYS, CLS, RET 
-int decode0() {
+int decode0(int instruction) {
   color(*color_iname);
   switch(instruction) {
     case 0x00E0:
@@ -345,14 +342,15 @@ int decode0() {
   return SUCCESS;
 }
 
-int (*decode[])() = { decode0, decode1, decode2, decode3, decode4, decode5, decode6, decode7, decode8, decode9, decodeA, decodeB, decodeC, decodeD, decodeE, decodeF };
+int (*decode[])(int) = { decode0, decode1, decode2, decode3, decode4, decode5, decode6, decode7, decode8, decode9, decodeA, decodeB, decodeC, decodeD, decodeE, decodeF };
 
 int disassemble() {
-  // read 1 byte into byte1 and byte2 each
-  while(fscanf(in, "%1c%1c", (char*) &byte1, (char*) &byte2) == 2) {
+  int current_addr = INITIAL_PC;
+  int instruction;
+  int opcode;
 
-    instruction |= byte1 << 8;
-    instruction |= byte2;
+  while((instruction = get_instruction(current_addr))) {
+    opcode = instruction >> 12;
 
     color(*color_address);
     printf("0x%0X:\t", current_addr);
@@ -360,12 +358,13 @@ int disassemble() {
     color(*color_opcode);
     printf("0x%04X\t", instruction);
 
-    if (decode[instruction >> 12]() == FAILED) {
+    // TODO decouple decoding and disassembling/printing
+    // such that disassembling vs emulating is just switching functors
+    if (decode[opcode](instruction) == FAILED) {
       color(*color_unknown);
       puts("UNKNOWN");
     }
 
-    instruction = 0;
     current_addr += 2;
   }
 
@@ -376,26 +375,54 @@ int disassemble() {
 // MAIN FN //
 /////////////
 
-int unset() {
+int get_instruction(int addr) {
+  int instruction = mem[addr] << 8;
+  return instruction | mem[addr + 1];
+}
+
+// copy rom into mem
+void copy_rom() {
+  int current_addr = INITIAL_PC;
+  // read rom bytewise to maintain big endianness
+  while (fscanf(in, "%1c", (char*) (mem + current_addr)) == 1) 
+    current_addr++;
+}
+
+void print_version() {
   printf("CC8 chip8 interpreter v%s '%s'\n", version, nickname);
+}
+
+int usage() {
+  print_version();
   puts("usage:");
-  puts("\t./CC8 { -d | -c } [ path ]");
+  puts("\t./CC8 { -d | -c | -v } [ path ]");
   puts("options:");
   puts("\t-d\tdisassemble");
   puts("\t-c\tcolor output");
+  puts("\t-v\tprint version and exit");
   puts("\tpath\tfile to read from (defaults to stdin)");
-  return SUCCESS; // do nothing successfully
+  return FAILED;
 }
 
-int (*exec[])() = { unset, disassemble };
-typedef enum { UNSET, DISASSEMBLE } mode;
+int (*exec[])() = { usage, disassemble };
+typedef enum { DEFAULT, DISASSEMBLE } mode;
+
+int cc8(mode mode) {
+  if (mode != DEFAULT)
+    copy_rom();
+  
+  return exec[mode]();
+}
 
 int main(int argc, char* argv[]) {
-  mode mode = UNSET;
+  mode mode = DEFAULT;
 
   char ch;
-  while ((ch = getopt(argc, argv, "dc")) != EOF) {
+  while ((ch = getopt(argc, argv, "vdc")) != EOF) {
     switch (ch) {
+      case 'v':
+        print_version();
+        return SUCCESS;
       case 'c':
         color_on = 1;
         break;
@@ -415,12 +442,12 @@ int main(int argc, char* argv[]) {
     in = fopen(*argv, "r");
 
     if (in == NULL) {
-      perror("ERROR");
+      perror(*argv);
       return FAILED;
     }
   } else { // default to reading from stdin
     in = stdin;
   }
-  
-  return exec[mode]();
+
+  cc8(mode);
 }

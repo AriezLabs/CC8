@@ -1,3 +1,5 @@
+#ifndef COLORS_H
+#define COLORS_H
 char* red;
 char* bold_red;
 char* green;
@@ -15,3 +17,4 @@ char* reset;
 int color_on;
 
 void color(const char* color);
+#endif
