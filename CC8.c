@@ -3,58 +3,27 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdint.h>
+#include <errno.h>
+#include "colors.h"
 
-////////////
-// COLORS //
-////////////
+const char* version = "0.1";
+const char* nickname = "useless garbage";
 
-const char* red = "[0;31m";
-const char* bold_red = "[1;31m";
-const char* green = "[0;32m"; 
-const char* bold_green = "[1;32m"; 
-const char* yellow = "[0;33m";
-const char* bold_yellow = "[1;33m"; 
-const char* blue = "[0;34m";
-const char* bold_blue = "[1;34m"; 
-const char* magenta = "[0;35m"; 
-const char* bold_magenta = "[1;35m"; 
-const char* cyan = "[0;36m";
-const char* bold_cyan = "[1;36m"; 
-const char* reset = "[0m" ; 
+const int SUCCESS = 0;
+const int FAILED  = 1;
 
-const int FAILED = 0;
-const int SUCCESS = 1;
-
-const char** color_address = &cyan;
-const char** color_opcode = &bold_magenta;
-const char** color_iname = &bold_blue;
-const char** color_constant = &yellow;
-const char** color_register = &bold_green;
-const char** color_unknown = &bold_red;
-
-int color_on = 0;
-
-void color(const char* color) {
-  if (color_on)
-    printf("\033%s", color);
-}
-
-void parse_opt(int argc, char* argv[]) {
-  char ch;
-  while ((ch = getopt(argc, argv, "c")) != EOF) {
-    switch (ch) {
-      case 'c':
-        color_on = 1;
-        break;
-    }
-  }
-  argc += optind;
-  argv += optind;
-}
+FILE* in;
 
 //////////////////
 // DISASSEMBLER //
 //////////////////
+
+char** color_address = &cyan;
+char** color_opcode = &bold_magenta;
+char** color_iname = &bold_blue;
+char** color_constant = &yellow;
+char** color_register = &bold_green;
+char** color_unknown = &bold_red;
 
 unsigned int current_addr = 0x200; // start address is 0x200
 
@@ -376,13 +345,11 @@ int decode0() {
   return SUCCESS;
 }
 
-int (*decoder[])() = { decode0, decode1, decode2, decode3, decode4, decode5, decode6, decode7, decode8, decode9, decodeA, decodeB, decodeC, decodeD, decodeE, decodeF };
+int (*decode[])() = { decode0, decode1, decode2, decode3, decode4, decode5, decode6, decode7, decode8, decode9, decodeA, decodeB, decodeC, decodeD, decodeE, decodeF };
 
-int main(int argc, char* argv[]) {
-  parse_opt(argc, argv);
-  
+int disassemble() {
   // read 1 byte into byte1 and byte2 each
-  while(fscanf( stdin, "%1c%1c", (char*) &byte1, (char*) &byte2) == 2) {
+  while(fscanf(in, "%1c%1c", (char*) &byte1, (char*) &byte2) == 2) {
 
     instruction |= byte1 << 8;
     instruction |= byte2;
@@ -393,7 +360,7 @@ int main(int argc, char* argv[]) {
     color(*color_opcode);
     printf("0x%04X\t", instruction);
 
-    if (decoder[instruction >> 12]() == FAILED) {
+    if (decode[instruction >> 12]() == FAILED) {
       color(*color_unknown);
       puts("UNKNOWN");
     }
@@ -401,4 +368,59 @@ int main(int argc, char* argv[]) {
     instruction = 0;
     current_addr += 2;
   }
+
+  return SUCCESS;
+}
+
+/////////////
+// MAIN FN //
+/////////////
+
+int unset() {
+  printf("CC8 chip8 interpreter v%s '%s'\n", version, nickname);
+  puts("usage:");
+  puts("\t./CC8 { -d | -c } [ path ]");
+  puts("options:");
+  puts("\t-d\tdisassemble");
+  puts("\t-c\tcolor output");
+  puts("\tpath\tfile to read from (defaults to stdin)");
+  return SUCCESS; // do nothing successfully
+}
+
+int (*exec[])() = { unset, disassemble };
+typedef enum { UNSET, DISASSEMBLE } mode;
+
+int main(int argc, char* argv[]) {
+  mode mode = UNSET;
+
+  char ch;
+  while ((ch = getopt(argc, argv, "dc")) != EOF) {
+    switch (ch) {
+      case 'c':
+        color_on = 1;
+        break;
+      case 'd':
+        mode = DISASSEMBLE;
+        break;
+    }
+  }
+
+  argc -= optind;
+  argv += optind;
+
+  if (argc >= 1) {
+    if (argc > 1) 
+      fprintf(stderr, "warning: ignoring any arguments after %s\n", *argv);
+
+    in = fopen(*argv, "r");
+
+    if (in == NULL) {
+      perror("ERROR");
+      return FAILED;
+    }
+  } else { // default to reading from stdin
+    in = stdin;
+  }
+  
+  return exec[mode]();
 }
