@@ -26,7 +26,7 @@ short mem[MEMSIZE] = {};
 
 int get_instruction(int addr) {
   int instruction = mem[addr] << 8;
-  return instruction | mem[addr + 1];
+  return instruction + mem[addr + 1];
 }
 
 // copy rom into mem
@@ -44,10 +44,11 @@ void print_version() {
 int usage() {
   print_version();
   puts("usage:");
-  puts("\t./CC8 { -d | -c | -v } [ path ]");
+  puts("\t./CC8 { -d | -c | -h | -v } [ path ]");
   puts("options:");
   puts("\t-d\tdisassemble");
   puts("\t-c\tcolor output");
+  puts("\t-h\tprint this help string");
   puts("\t-v\tprint version and exit");
   puts("\tpath\tfile to read from (defaults to stdin)");
   return FAILED;
@@ -61,7 +62,7 @@ int main(int argc, char* argv[]) {
 
   // parse flags
   char ch;
-  while ((ch = getopt(argc, argv, "vdc")) != EOF) {
+  while ((ch = getopt(argc, argv, "hvdc")) != EOF) {
     switch (ch) {
       case 'v':
         print_version();

@@ -1,4 +1,4 @@
-emu: CC8.o
+CC8: CC8.o
 	gcc CC8.o colors.o disassembler.o decoder.o -o CC8
 
 colors.o: colors.c colors.h
@@ -13,5 +13,5 @@ decoder.o: decoder.c decoder.h
 CC8.o: colors.o disassembler.o decoder.o CC8.c
 	gcc -c CC8.c
 
-test: emu
-	./CC8 -d submarine.ch8 > tmp && diff tmp submarine.s
+test: CC8
+	./CC8 -d submarine.ch8 > tmp && diff tmp submarine.s && rm tmp

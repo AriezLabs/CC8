@@ -2,6 +2,6 @@
 #define DECODER_H
 #include "CC8.h"
 
-enum opcode decode(int instruction);
+decoded_instruction* decode(int instruction);
 
 #endif

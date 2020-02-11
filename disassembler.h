@@ -1,6 +1,7 @@
 #ifndef DISASSEMBLER_H
 #define DISASSEMBLER_H
 
+// unused but took a minute to put together so I'm keeping it
 static const char* opcodeLiterals[] = {
   "SYS",
   "CLS",

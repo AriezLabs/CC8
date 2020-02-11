@@ -1,132 +1,175 @@
-#include "decoder.h"
+#include <stdlib.h>
 
-enum opcode decodeF(int instruction) {
+#include "decoder.h"
+#include "CC8.h"
+
+void decodeF(int instruction, decoded_instruction* i) {
+  // given register might be source and destination depending on opcode, so just set both
+  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF00) >> 8;
+
   switch (instruction & 0xF0FF) {
     case 0xF007: 
-      return LDDT;
+      i->op = LDDT;
     case 0xF00A:
-      return LDK;
+      i->op = LDK;
     case 0xF015: 
-      return SDDT;
+      i->op = SDDT;
     case 0xF018: 
-      return SDST;
+      i->op = SDST;
     case 0xF01E:
-      return ADDIR;
+      i->op = ADDIR;
     case 0xF029: 
-      return LDSPR;
+      i->op = LDSPR;
     case 0xF033:
-      return SDDEC;
+      i->op = SDDEC;
     case 0xF055: 
-      return SDR;
+      i->op = SDR;
     case 0xF065:
-      return LDR;
+      i->op = LDR;
     default:
-      return FAILED;
+      i->op = UNKNOWN;
   }
 }
 
-enum opcode decodeE(int instruction) {
+void decodeE(int instruction, decoded_instruction* i) {
+  i->source = (instruction & 0xF00) >> 8;
+
   switch (instruction & 0xF0FF) {
     case 0xE09E: // skip if pressed
-      return SKK;
+      i->op = SKP;
     case 0xE0A1: // skip if not pressed
-      return SKNP;
+      i->op = SKNP;
     default:
-      return FAILED;
+      i->op = UNKNOWN;
   }
 }
 
-enum opcode decodeD(int instruction) {
-  return DRW;
+void decodeD(int instruction, decoded_instruction* i) {
+  i->op = DRW;
+  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF0) >> 4;
+  i->immediate = (instruction & 0xF);
 }
 
-enum opcode decodeC(int instruction) {
-  return RND;
+void decodeC(int instruction, decoded_instruction* i) {
+  i->op = RND;
+  i->destination = (instruction & 0xF00) >> 8;
+  i->immediate = instruction & 0xFFF;
 }
 
-enum opcode decodeB(int instruction) {
-  return JPR;
+void decodeB(int instruction, decoded_instruction* i) {
+  i->op = JPR;
+  i->immediate = instruction & 0xFFF;
 }
 
-enum opcode decodeA(int instruction) {
-  return LDIR;
+void decodeA(int instruction, decoded_instruction* i) {
+  i->op = LDIR;
+  i->immediate = instruction & 0xFFF;
 }
 
-enum opcode decode9(int instruction) {
-  if ((instruction & 0xF00F) == 0x9000) {
-    return SKNE;
-  } else {
-    return FAILED;
-  }
+void decode9(int instruction, decoded_instruction* i) {
+  if ((instruction & 0xF) != 0x9000) {
+    i->op = UNKNOWN;
+    return;
+  } 
+
+  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF0) >> 4;
+  i->op = SKNE;
 }
 
-enum opcode decode8(int instruction) {
+void decode8(int instruction, decoded_instruction* i) {
+  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF0) >> 4;
+
   switch (instruction & 0x000F) {
     case 0x000E:
-      return SHL;
+      i->op = SHL;
     case 0x0007:
-      return SUBN;
+      i->op = SUBN;
     case 0x0006:
-      return SHR;
+      i->op = SHR;
     case 0x0005:
-      return SUB;
+      i->op = SUB;
     case 0x0004:
-      return ADD;
+      i->op = ADD;
     case 0x0003:
-      return XOR;
+      i->op = XOR;
     case 0x0002:
-      return AND;
+      i->op = AND;
     case 0x0001:
-      return OR;
+      i->op = OR;
     case 0x0000:
-      return LD;
+      i->op = LD;
     default:
-      return FAILED;
+      i->op = UNKNOWN;
   }
 }
 
-enum opcode decode7(int instruction) {
-  return ADDI;
+void decode7(int instruction, decoded_instruction* i) {
+  i->op = ADDI;
+  i->source = (instruction & 0xF00) >> 8;
+  i->immediate = instruction & 0xFF;
 }
 
-enum opcode decode6(int instruction) {
-  return LDI;
+void decode6(int instruction, decoded_instruction* i) {
+  i->op = LDI;
+  i->source = (instruction & 0xF00) >> 8;
+  i->immediate = instruction & 0xFF;
 }
 
-enum opcode decode5(int instruction) {
-  return SE;
+void decode5(int instruction, decoded_instruction* i) {
+  if ((instruction & 0xF) != 0) {
+    i->op = UNKNOWN;
+    return;
+  }
+
+  i->op = SE;
+  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF0) >> 4;
 }
 
-enum opcode decode4(int instruction) {
-  return SKNEI;
+void decode4(int instruction, decoded_instruction* i) {
+  i->op = SKNEI;
+  i->source = (instruction & 0xF00) >> 8;
+  i->immediate = instruction & 0xFF;
 }
 
-enum opcode decode3(int instruction) {
-  return SKEI;
+void decode3(int instruction, decoded_instruction* i) {
+  i->op = SKEI;
+  i->source = (instruction & 0xF00) >> 8;
+  i->immediate = instruction & 0xFF;
 }
 
-enum opcode decode2(int instruction) {
-  return CALL;
+void decode2(int instruction, decoded_instruction* i) {
+  i->op = CALL;
+  i->immediate = instruction & 0xFFF;
 }
 
-enum opcode decode1(int instruction) {
-  return JP;
+void decode1(int instruction, decoded_instruction* i) {
+  i->op = JP;
+  i->immediate = instruction & 0xFFF;
 }
 
-enum opcode decode0(int instruction) {
+void decode0(int instruction, decoded_instruction* i) {
   switch(instruction) {
     case 0x00E0:
-      return CLS;
+      i->op = CLS;
     case 0x00EE:
-      return RET;
+      i->op = RET;
     default:
-      return SYS;
+      i->op = SYS;
+      i->immediate = instruction & 0xFFF;
   }
 }
 
-enum opcode (*decodeOpcode[])(int) = { decode0, decode1, decode2, decode3, decode4, decode5, decode6, decode7, decode8, decode9, decodeA, decodeB, decodeC, decodeD, decodeE, decodeF };
+void (*decodeOpcode[])(int, decoded_instruction*) = { decode0, decode1, decode2, decode3, decode4, decode5, decode6, decode7, decode8, decode9, decodeA, decodeB, decodeC, decodeD, decodeE, decodeF };
 
-enum opcode decode(int instruction) {
+decoded_instruction* decode(int instruction) {
   int opcode = instruction >> 12;
-  return decodeOpcode[opcode](instruction);
+  decoded_instruction* i = malloc(sizeof(decoded_instruction));
+  decodeOpcode[opcode](instruction, i);
+  return i;
 }
+

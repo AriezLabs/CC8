@@ -32,8 +32,8 @@ static enum opcode {
   LDIR,     // Annn set register I = nnn
   JPR,      // Bnnn jump to V0 + nnn
   RND,      // Cxkk set Vx = random byte & kk
-  DRW,      // Dxyn xor sprite at I to (Vx, Vy), wraparound, set VF = 1 iff pixel erased
-  SKK,      // Ex9E skip next instruction if key Vx is pressed
+  DRW,      // Dxyn xor n-byte sprite at I to (Vx, Vy), wraparound, set VF = 1 iff pixel erased
+  SKP,      // Ex9E skip next instruction if key Vx is pressed
   SKNP,     // ExA1 skip next instruction if key Vx is NOT pressed
   LDDT,     // Fx07 Vx = DT
   LDK,      // Fx0A wait for key press and store key id into Vx
@@ -44,6 +44,14 @@ static enum opcode {
   SDDEC,    // Fx33 mem[i:i+2] = big endian 3-digit decimal representation of Vx
   SDR,      // Fx55 store registers V0-Vx at mem[i:...]
   LDR,      // Fx65 load mem[i:...] into V0-Vx
+  UNKNOWN
 } opcode;
+
+typedef struct {
+  enum opcode op;
+  int source;
+  int destination;
+  int immediate;
+} decoded_instruction;
 
 #endif

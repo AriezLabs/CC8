@@ -1,3 +1,6 @@
+// this code does not use the decoder
+// - may get updated at some point
+
 #include "colors.h"
 #include "stdio.h"
 #include "CC8.h"
