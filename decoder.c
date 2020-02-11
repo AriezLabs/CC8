@@ -4,7 +4,7 @@
 #include "CC8.h"
 
 void decodeF(int instruction, decoded_instruction* i) {
-  // given register might be source and destination depending on opcode, so just set both
+  // the register might be source or destination depending on opcode, so just set both
   i->source = (instruction & 0xF00) >> 8;
   i->destination = (instruction & 0xF00) >> 8;
 

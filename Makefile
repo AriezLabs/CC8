@@ -10,7 +10,7 @@ disassembler.o: disassembler.c disassembler.h
 decoder.o: decoder.c decoder.h
 	gcc -c decoder.c
 
-CC8.o: colors.o disassembler.o decoder.o CC8.c
+CC8.o: colors.o disassembler.o decoder.o CC8.c CC8.h
 	gcc -c CC8.c
 
 test: CC8
