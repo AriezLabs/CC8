@@ -11,22 +11,31 @@ void decodeF(int instruction, decoded_instruction* i) {
   switch (instruction & 0xF0FF) {
     case 0xF007: 
       i->op = LDDT;
+      break;
     case 0xF00A:
       i->op = LDK;
+      break;
     case 0xF015: 
       i->op = SDDT;
+      break;
     case 0xF018: 
       i->op = SDST;
+      break;
     case 0xF01E:
       i->op = ADDIR;
+      break;
     case 0xF029: 
       i->op = LDSPR;
+      break;
     case 0xF033:
       i->op = SDDEC;
+      break;
     case 0xF055: 
       i->op = SDR;
+      break;
     case 0xF065:
       i->op = LDR;
+      break;
     default:
       i->op = UNKNOWN;
   }
@@ -38,8 +47,10 @@ void decodeE(int instruction, decoded_instruction* i) {
   switch (instruction & 0xF0FF) {
     case 0xE09E: // skip if pressed
       i->op = SKP;
+      break;
     case 0xE0A1: // skip if not pressed
       i->op = SKNP;
+      break;
     default:
       i->op = UNKNOWN;
   }
@@ -86,22 +97,31 @@ void decode8(int instruction, decoded_instruction* i) {
   switch (instruction & 0x000F) {
     case 0x000E:
       i->op = SHL;
+      break;
     case 0x0007:
       i->op = SUBN;
+      break;
     case 0x0006:
       i->op = SHR;
+      break;
     case 0x0005:
       i->op = SUB;
+      break;
     case 0x0004:
       i->op = ADD;
+      break;
     case 0x0003:
       i->op = XOR;
+      break;
     case 0x0002:
       i->op = AND;
+      break;
     case 0x0001:
       i->op = OR;
+      break;
     case 0x0000:
       i->op = LD;
+      break;
     default:
       i->op = UNKNOWN;
   }
@@ -169,6 +189,12 @@ void (*decodeOpcode[])(int, decoded_instruction*) = { decode0, decode1, decode2,
 decoded_instruction* decode(int instruction) {
   int opcode = instruction >> 12;
   decoded_instruction* i = malloc(sizeof(decoded_instruction));
+
+  i->op = UNSET;
+  i->source = UNSET;
+  i->destination = UNSET;
+  i->immediate = UNSET;
+
   decodeOpcode[opcode](instruction, i);
   return i;
 }

@@ -50,7 +50,7 @@ int FAILED;
 
 int INITIAL_PC;
 
-static const char* opcode_strings[] = {
+static const char* opcode_literals[] = {
   FOREACH_OPCODE(GENERATE_STRING)
 };
 
