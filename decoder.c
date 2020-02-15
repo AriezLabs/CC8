@@ -92,8 +92,8 @@ void decode9(int instruction, decoded_instruction* i) {
 }
 
 void decode8(int instruction, decoded_instruction* i) {
-  i->source = (instruction & 0xF00) >> 8;
-  i->destination = (instruction & 0xF0) >> 4;
+  i->source = (instruction & 0xF0) >> 4;
+  i->destination = (instruction & 0xF00) >> 8;
 
   switch (instruction & 0x000F) {
     case 0x000E:
@@ -130,13 +130,13 @@ void decode8(int instruction, decoded_instruction* i) {
 
 void decode7(int instruction, decoded_instruction* i) {
   i->op = ADDI;
-  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF00) >> 8;
   i->immediate = instruction & 0xFF;
 }
 
 void decode6(int instruction, decoded_instruction* i) {
   i->op = LDI;
-  i->source = (instruction & 0xF00) >> 8;
+  i->destination = (instruction & 0xF00) >> 8;
   i->immediate = instruction & 0xFF;
 }
 
