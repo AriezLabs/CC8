@@ -1,9 +1,38 @@
 #include "cpu.h"
+
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
+int V[16];           // GP registers
+int I;               // address register
+int DT = 0;          // delay timer register
+int ST = 0;          // sound timer register
+int PC = INITIAL_PC; // program counter
+int SP = 0;          // stack pointer
+
+unsigned long long cycle_count = 0;
+
+void debug_println(char* format_string, ...) {
+  if (DEBUG) {
+    va_list ap;
+    va_start(ap, format_string);
+    vprintf(format_string, ap);
+    puts("");
+  }
+}
+
+void debug_print(char* format_string, ...) {
+  if (DEBUG) {
+    va_list ap;
+    va_start(ap, format_string);
+    vprintf(format_string, ap);
+  }
+}
 
 // 0nnn call routine
 void do_sys(decoded_instruction* instruction) {
-
+  debug_println("ignoring SYS 0x%03X", instruction->immediate);
 }
 
 // 00E0 clear screen
@@ -178,11 +207,37 @@ void do_ldr(decoded_instruction* instruction) {
 
 void (*opcodes[])(decoded_instruction*) = { do_sys, do_cls, do_ret, do_jp, do_call, do_skei, do_sknei, do_se, do_ldi, do_addi, do_ld, do_or, do_and, do_xor, do_add, do_sub, do_shr, do_subn, do_shl, do_skne, do_ldir, do_jpr, do_rnd, do_drw, do_skp, do_sknp, do_lddt, do_ldk, do_sddt, do_sdst, do_addir, do_ldspr, do_sddec, do_sdr, do_ldr };
 
-void do_instruction(decoded_instruction* instruction) {
+int do_instruction(decoded_instruction* instruction) {
   if (instruction->op == UNKNOWN) {
     puts("GET BETTER HANDLING FOR UNKNOWN INSTRUCTIONS RETARD");
-    return;
+    return FAILED;
   }
 
   opcodes[instruction->op](instruction);
+  return SUCCESS;
+}
+
+int cycle() {
+  debug_print("cycle %lld:\t", cycle_count);
+
+  if (DT > 0) {
+    debug_print("DT: %d -> %d\t", DT, DT - 1);
+    DT--;
+  }
+
+  if (ST > 0) {
+    debug_print("ST: %d -> %d\t", ST, ST - 1);
+    ST--;
+    beep();
+  }
+
+  decoded_instruction* i = decode(get_instruction(PC));
+
+  debug_println("\top: %s", opcode_literals[i->op]);
+
+  int status = do_instruction(i);
+  PC += 2;
+  cycle_count++;
+  free(i);
+  return status;
 }

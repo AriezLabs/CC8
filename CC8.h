@@ -43,13 +43,21 @@
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
 
+#define MEMSIZE 4096
+#define INITIAL_PC 0x200
+
 int get_instruction(int addr);
+
+int DEBUG;
 
 int SUCCESS;
 int FAILED;
 
-int INITIAL_PC;
+// extern - defined once in a source file
+extern short mem[];
 
+// static - defined this way once for every source file
+// (mutations won't change var for other source files)
 static const char* opcode_literals[] = {
   FOREACH_OPCODE(GENERATE_STRING)
 };
@@ -64,5 +72,7 @@ typedef struct {
   int destination;
   int immediate;
 } decoded_instruction;
+
+void beep();
 
 #endif

@@ -8,15 +8,16 @@
 char** color_address = &cyan;
 char** color_opcode = &bold_magenta;
 char** color_iname = &bold_blue;
-char** color_constant = &yellow;
+char** color_constant = &red;
 char** color_register = &bold_green;
-char** color_unknown = &bold_red;
+char** color_unknown = &bold_yellow;
 
 int disassembleMem() {
   int current_addr = INITIAL_PC;
   int instruction;
   int opcode;
 
+  // TODO read to first actual zero
   while((instruction = get_instruction(current_addr))) {
     decoded_instruction* i = decode(instruction);
 

@@ -9,20 +9,23 @@
 #include "CC8.h"
 #include "disassembler.h"
 #include "decoder.h"
+#include "cpu.h"
 
-#define MEMSIZE 4096
+const char* version = "0.5";
+const char* nickname = "garbage with a brain";
 
-const char* version = "0.3";
-const char* nickname = "neatly separated garbage";
-
-int SUCCESS = 0;
-int FAILED  = -1;
-
-int INITIAL_PC = 0x200;
+int DEBUG   = 0;
+int SUCCESS = 1;
+int FAILED  = 0;
 
 FILE* in;
 
 short mem[MEMSIZE] = {};
+
+int run() {
+  while(cycle());
+  return FAILED;
+}
 
 int get_instruction(int addr) {
   int instruction = mem[addr] << 8;
@@ -33,8 +36,12 @@ int get_instruction(int addr) {
 void copy_rom() {
   int current_addr = INITIAL_PC;
   // read rom bytewise to maintain big endianness
-  while (fscanf(in, "%1c", (char*) (mem + current_addr)) == 1) 
+  while (fscanf(in, "%1c", (char*) (mem + current_addr)) == 1 && current_addr < MEMSIZE) 
     current_addr++;
+}
+
+void beep() {
+
 }
 
 void print_version() {
@@ -44,8 +51,10 @@ void print_version() {
 int usage() {
   print_version();
   puts("usage:");
-  puts("\t./CC8 { -d | -c | -h | -v } [ path ]");
+  puts("\t./CC8 { -r | -R | -d | -c | -h | -v } [ path ]");
   puts("options:");
+  puts("\t-r\trun");
+  puts("\t-R\trun and print debug output");
   puts("\t-d\tdisassemble");
   puts("\t-c\tcolor output");
   puts("\t-h\tprint this help string");
@@ -54,15 +63,15 @@ int usage() {
   return FAILED;
 }
 
-int (*exec[])() = { usage, disassembleMem };
-typedef enum { DEFAULT, DISASSEMBLE } mode;
+int (*exec[])() = { usage, disassembleMem, run };
+typedef enum { DEFAULT, DISASSEMBLE, RUN } mode;
 
 int main(int argc, char* argv[]) {
   mode mode = DEFAULT;
 
   // parse flags
   char ch;
-  while ((ch = getopt(argc, argv, "hvdc")) != EOF) {
+  while ((ch = getopt(argc, argv, "rRhvdc")) != EOF) {
     switch (ch) {
       case 'v':
         print_version();
@@ -72,6 +81,11 @@ int main(int argc, char* argv[]) {
         break;
       case 'd':
         mode = DISASSEMBLE;
+        break;
+      case 'R':
+        mode = DEBUG = 1;
+      case 'r':
+        mode = RUN;
         break;
     }
   }

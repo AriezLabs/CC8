@@ -1,3 +1,6 @@
 #include "CC8.h"
+#include "decoder.h"
 
-void do_instruction(decoded_instruction* instruction);
+int do_instruction(decoded_instruction* instruction);
+
+int cycle();
