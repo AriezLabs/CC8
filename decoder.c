@@ -2,6 +2,7 @@
 
 #include "decoder.h"
 #include "CC8.h"
+#include "disassembler.h"
 
 void decodeF(int instruction, decoded_instruction* i) {
   // the register might be source or destination depending on opcode, so just set both
@@ -176,8 +177,10 @@ void decode0(int instruction, decoded_instruction* i) {
   switch(instruction) {
     case 0x00E0:
       i->op = CLS;
+      break;
     case 0x00EE:
       i->op = RET;
+      break;
     default:
       i->op = SYS;
       i->immediate = instruction & 0xFFF;
@@ -196,6 +199,11 @@ decoded_instruction* decode(int instruction) {
   i->immediate = UNSET;
 
   decodeOpcode[opcode](instruction, i);
+
+  if (DEBUG) {
+    print_instruction(i);
+  }
+
   return i;
 }
 

@@ -1,24 +1,31 @@
+#define NUMREGS 16
+#define STACKSIZE 1024
+
 #include "cpu.h"
+#include "colors.h"
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
-int V[16];           // GP registers
-int I;               // address register
-int DT = 0;          // delay timer register
-int ST = 0;          // sound timer register
-int PC = INITIAL_PC; // program counter
-int SP = 0;          // stack pointer
+int V[NUMREGS];            // GP registers
+int I;                     // address register
+int DT = 0;                // delay timer register
+int ST = 0;                // sound timer register
+int PC = INITIAL_PC;       // program counter
+int SP = 0;                // stack pointer
+int stack[STACKSIZE];      // stack
 
 unsigned long long cycle_count = 0;
 
-void debug_println(char* format_string, ...) {
+void debug_error(char* format_string, ...) {
   if (DEBUG) {
     va_list ap;
     va_start(ap, format_string);
+    color(red);
+    printf("[ERROR] ");
     vprintf(format_string, ap);
-    puts("");
+    color(reset);
   }
 }
 
@@ -32,17 +39,26 @@ void debug_print(char* format_string, ...) {
 
 // 0nnn call routine
 void do_sys(decoded_instruction* instruction) {
-  debug_println("ignoring SYS 0x%03X", instruction->immediate);
+  debug_print("ignoring SYS 0x%03X\n", instruction->immediate);
 }
 
 // 00E0 clear screen
 void do_cls(decoded_instruction* instruction) {
-
+  int i;
+  for (i = 0; i < SCREENHEIGHT; i++)
+    drawbuf[i] = 0;
+  debug_print("CLS: cleared draw buffer\n");
 }
 
 // 00EE set PC to *SP; SP--
 void do_ret(decoded_instruction* instruction) {
-
+  if (SP > 0) {
+    PC = stack[SP];
+    SP--;
+    debug_print("RET: PC=0x%04X, SP=0x%04X\n", PC, SP);
+  }
+  else
+    debug_error("RET: SP is zero, ignoring instruction\n");
 }
 
 // 1nnn jump to nnn
@@ -209,7 +225,7 @@ void (*opcodes[])(decoded_instruction*) = { do_sys, do_cls, do_ret, do_jp, do_ca
 
 int do_instruction(decoded_instruction* instruction) {
   if (instruction->op == UNKNOWN) {
-    puts("GET BETTER HANDLING FOR UNKNOWN INSTRUCTIONS RETARD");
+    debug_error("GET BETTER HANDLING FOR UNKNOWN INSTRUCTIONS RETARD\n");
     return FAILED;
   }
 
@@ -218,7 +234,7 @@ int do_instruction(decoded_instruction* instruction) {
 }
 
 int cycle() {
-  debug_print("cycle %lld:\t", cycle_count);
+  debug_print("cycle %lld (PC=0x%04X):\t", cycle_count, PC);
 
   if (DT > 0) {
     debug_print("DT: %d -> %d\t", DT, DT - 1);
@@ -232,8 +248,6 @@ int cycle() {
   }
 
   decoded_instruction* i = decode(get_instruction(PC));
-
-  debug_println("\top: %s", opcode_literals[i->op]);
 
   int status = do_instruction(i);
   PC += 2;

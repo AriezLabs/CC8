@@ -1,6 +1,8 @@
 #ifndef CC8_h
 #define CC8_h
 
+#include <stdint.h>
+
 // define opcodes as enum and string via preprocessor
 #define FOREACH_OPCODE(OPCODE) \
   OPCODE(SYS)     \
@@ -44,7 +46,10 @@
 #define GENERATE_STRING(STRING) #STRING,
 
 #define MEMSIZE 4096
+#define SCREENHEIGHT 32
 #define INITIAL_PC 0x200
+
+int binary_len;
 
 int get_instruction(int addr);
 
@@ -55,6 +60,8 @@ int FAILED;
 
 // extern - defined once in a source file
 extern short mem[];
+
+uint64_t drawbuf[32];
 
 // static - defined this way once for every source file
 // (mutations won't change var for other source files)

@@ -20,4 +20,4 @@ CC8.o: cpu.o colors.o disassembler.o decoder.o CC8.c CC8.h
 	$(CC) $(CCFLAGS) -c CC8.c
 
 test: CC8
-	@./CC8 -d submarine.ch8 > tmp && diff tmp submarine.s && rm tmp
+	./CC8 -d submarine.ch8 > tmp && diff tmp submarine.s && rm tmp

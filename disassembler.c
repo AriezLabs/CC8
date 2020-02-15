@@ -1,6 +1,5 @@
 #include "colors.h"
 #include "stdio.h"
-#include "CC8.h"
 #include "disassembler.h"
 #include "decoder.h"
 #include <stdlib.h>
@@ -18,7 +17,9 @@ int disassembleMem() {
   int opcode;
 
   // TODO read to first actual zero
-  while((instruction = get_instruction(current_addr))) {
+  while(current_addr < binary_len) {
+    instruction = get_instruction(current_addr);
+
     decoded_instruction* i = decode(instruction);
 
     color(*color_address);
@@ -27,30 +28,36 @@ int disassembleMem() {
     color(*color_opcode);
     printf("0x%04X\t", instruction);
 
-    if (i->op == UNKNOWN) {
-      color(*color_unknown);
-      printf("%s\t", opcode_literals[i->op]);
+    print_instruction(i);
 
-    } else {
-      color(*color_iname);
-      printf("%s\t", opcode_literals[i->op]);
-
-      color(*color_register);
-      if (i->source != UNSET)
-        printf("V%X\t", i->source);
-      if (i->destination != UNSET)
-        printf("V%X\t", i->destination);
-
-      color(*color_constant);
-      if (i->immediate != UNSET)
-        printf("0x%X\t", i->immediate);
-    }
-
-    puts("");
     current_addr += 2;
     free(i);
   }
 
-  return SUCCESS;
+  return 0;
+}
+
+void print_instruction(decoded_instruction* i) {
+  if (i->op == UNKNOWN) {
+    color(*color_unknown);
+    printf("%s\t", opcode_literals[i->op]);
+
+  } else {
+    color(*color_iname);
+    printf("%s\t", opcode_literals[i->op]);
+
+    color(*color_register);
+    if (i->source != UNSET)
+      printf("V%X\t", i->source);
+    if (i->destination != UNSET)
+      printf("V%X\t", i->destination);
+
+    color(*color_constant);
+    if (i->immediate != UNSET)
+      printf("0x%X\t", i->immediate);
+  }
+
+  color(reset);
+  puts("");
 }
 
