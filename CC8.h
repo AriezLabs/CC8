@@ -62,6 +62,7 @@ int FAILED;
 extern short mem[];
 
 uint64_t drawbuf[32];
+int drawbuf_changed;
 
 // static - defined this way once for every source file
 // (mutations won't change var for other source files)
@@ -80,6 +81,6 @@ typedef struct {
   int immediate;
 } decoded_instruction;
 
-void beep();
+//void beep();
 
 #endif

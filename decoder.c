@@ -67,7 +67,7 @@ void decodeD(int instruction, decoded_instruction* i) {
 void decodeC(int instruction, decoded_instruction* i) {
   i->op = RND;
   i->destination = (instruction & 0xF00) >> 8;
-  i->immediate = instruction & 0xFFF;
+  i->immediate = instruction & 0xFF;
 }
 
 void decodeB(int instruction, decoded_instruction* i) {

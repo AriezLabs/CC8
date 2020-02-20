@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <time.h>
 
 int V[NUMREGS];            // GP registers
 int I;                     // address register
@@ -47,6 +48,7 @@ void do_cls(decoded_instruction* instruction) {
   int i;
   for (i = 0; i < SCREENHEIGHT; i++)
     drawbuf[i] = 0LL;
+  drawbuf_changed = 1;
   debug_print("\tCLS: cleared draw buffer\n");
 }
 
@@ -318,10 +320,53 @@ void do_jpr(decoded_instruction* instruction) {
 
 // Cxkk set Vx = random byte & kk
 void do_rnd(decoded_instruction* instruction) {
+  debug_print("\tRND: V%d=%d", 
+      instruction->destination,
+      V[instruction->destination]);
+
+  if (!DEBUG)
+    srand(time(0));
+  V[instruction->destination] = rand() & instruction->immediate;
+
+  debug_print(" ⇒ V%d=%d\n", 
+      instruction->destination,
+      V[instruction->destination]);
 }
 
-// Dxyn xor n-byte sprite at I to (Vx, Vy), wraparound, set VF = 1 iff pixel erased
+// Dxyn xor n-byte sprite at I to (Vx, Vy), wraparound?, set VF = 1 iff pixel erased
 void do_drw(decoded_instruction* instruction) {
+  debug_print("\tDRW: I=%d, x=V%d=%d, y=V%d=%d, n=%d, VF=%d", 
+      I,
+      instruction->source,
+      V[instruction->source],
+      instruction->destination,
+      V[instruction->destination],
+      instruction->immediate,
+      V[0xF]);
+
+  int x = V[instruction->source];
+  int y = V[instruction->destination];
+  int n = instruction->immediate;
+
+  int i;
+  for (i = 0; i < n; i++) {
+    // without casting mem[], we would left shift a 32-bit number by up to 64 bits
+    // which would then get filled up with 1s when storing it into a 64-bit number
+    // breaking our draw buffer...
+    uint64_t shifted = ((uint64_t) mem[I+i]) << (56 - x);
+
+    debug_print(" shifted = %li ", shifted);
+
+    if(drawbuf[y + i] & shifted && V[0xF] != 1) {
+      V[0xF] = 1;
+      debug_print(" ⇒ VF=1");
+    }
+
+    drawbuf[y + i] ^= shifted;
+  }
+
+  debug_print("\n");
+  drawbuf_changed = 1;
 }
 
 // Ex9E skip next instruction if key Vx is pressed
@@ -354,6 +399,14 @@ void do_addir(decoded_instruction* instruction) {
 
 // Fx29 I = address of sprite for digit Vx
 void do_ldspr(decoded_instruction* instruction) {
+  debug_print("\tLDSPR: I=%d, V%d=%d", 
+      I,
+      instruction->source,
+      V[instruction->source]);
+
+  I = V[instruction->source] * 5;
+
+  debug_print(" ⇒ I=%d\n", I);
 }
 
 // Fx33 mem[i:i+2] = big endian 3-digit decimal representation of Vx
