@@ -8,6 +8,9 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 int V[NUMREGS];            // GP registers
 int I;                     // address register
@@ -36,6 +39,25 @@ void debug_print(char* format_string, ...) {
     va_start(ap, format_string);
     vprintf(format_string, ap);
   }
+}
+
+// adapted copypaste from http://www.undertec.de/blog/2009/05/kbhit-und-getch-fur-linux.html
+// not sure about semantics when multiple keys are being pressed
+int kbhit(void) {
+   struct termios term, oterm;
+   int fd = 0;
+   int c = 0;
+   tcgetattr(fd, &oterm);
+   memcpy(&term, &oterm, sizeof(term));
+   term.c_lflag = term.c_lflag & (!ICANON);
+   term.c_cc[VMIN] = 0;
+   term.c_cc[VTIME] = 1;
+   tcsetattr(fd, TCSANOW, &term);
+   c = getchar();
+   tcsetattr(fd, TCSANOW, &oterm);
+   if (c != -1)
+     ungetc(c, stdin);
+   return c;
 }
 
 // 0nnn call routine
@@ -129,10 +151,18 @@ void do_ldi(decoded_instruction* instruction) {
 
 // 7xkk Vx += kk
 void do_addi(decoded_instruction* instruction) {
-  V[instruction->destination] += instruction->immediate;
-
-  debug_print("\tADDI: imm=%d ⇒ V%d=%d\n", 
+  debug_print("\tADDI: imm=%d, V%d=%d", 
       instruction->immediate,
+      instruction->destination,
+      V[instruction->destination]);
+
+  V[instruction->destination] += instruction->immediate;
+  if (V[instruction->destination] > 0xFF) {
+    V[instruction->destination] &= 0xFF;
+    V[0xF] = 1;
+  }
+
+  debug_print(" ⇒ V%d=%d\n", 
       instruction->destination,
       V[instruction->destination]);
 }
@@ -279,7 +309,8 @@ void do_shl(decoded_instruction* instruction) {
       instruction->destination,
       V[instruction->destination]);
 
-  V[instruction->destination] >>= 1;
+  V[instruction->destination] <<= 1;
+  if (V[instruction->destination] > 0xFF)
   V[instruction->destination] &= 0xFF;
 
   debug_print(" ⇒ V%d=%d\n", 
@@ -355,8 +386,6 @@ void do_drw(decoded_instruction* instruction) {
     // breaking our draw buffer...
     uint64_t shifted = ((uint64_t) mem[I+i]) << (56 - x);
 
-    debug_print(" shifted = %li ", shifted);
-
     if(drawbuf[y + i] & shifted && V[0xF] != 1) {
       V[0xF] = 1;
       debug_print(" ⇒ VF=1");
@@ -371,30 +400,104 @@ void do_drw(decoded_instruction* instruction) {
 
 // Ex9E skip next instruction if key Vx is pressed
 void do_skp(decoded_instruction* instruction) {
+  int key = kbhit();
+
+  debug_print("\tSKP: PC=0x%04X, key=%d (mapped %d), V=%d", PC, (char) key, kbmap[key], instruction->source);
+
+  if (key != -1 && kbmap[key] == instruction->source) {
+    color(green);
+    PC += 2;
+  }
+
+  debug_print(" ⇒ PC=0x%04X\n", PC);
 }
 
 // ExA1 skip next instruction if key Vx is NOT pressed
 void do_sknp(decoded_instruction* instruction) {
+  int key = kbhit();
+
+  debug_print("\tSKNP: PC=0x%04X, key=%d (mapped %d), V=%d", PC, (char) key, kbmap[key], instruction->source);
+
+  if (key == -1 || kbmap[key] != instruction->source) {
+    PC += 2;
+  }
+
+  debug_print(" ⇒ PC=0x%04X\n", PC);
 }
 
 // Fx07 Vx = DT
 void do_lddt(decoded_instruction* instruction) {
+  debug_print("\tLDDT: V%d=%d", 
+      instruction->destination,
+      V[instruction->destination]);
+
+  V[instruction->destination] = DT;
+
+  debug_print(" ⇒ V%d=%d\n", 
+      instruction->destination,
+      V[instruction->destination]);
 }
 
 // Fx0A wait for key press and store key id into Vx
 void do_ldk(decoded_instruction* instruction) {
+  int k;
+
+  // is key pressed?
+  if ((k = kbhit()) == -1) {
+    PC -= 2;
+    cycle_count--;
+
+  // is it a mapped key?
+  } else if ((k = kbmap[k]) != UNMAPPED_KEY){
+    V[instruction->destination] = k;
+    debug_print("\tLDK: key=%d ⇒ V[%d]=%d\n", 
+        (char) k, 
+        instruction->destination, 
+        V[instruction->destination]);
+  }
 }
 
 // Fx15 DT = Vx
 void do_sddt(decoded_instruction* instruction) {
+  debug_print("\tSDDT: DT=%d, V%d=%d", 
+      DT,
+      instruction->destination,
+      V[instruction->destination]);
+
+  DT = V[instruction->destination];
+
+  debug_print(" ⇒ DT=%d", 
+      DT);
 }
 
 // Fx18 ST = Vx
 void do_sdst(decoded_instruction* instruction) {
+  debug_print("\tSDST: ST=%d, V%d=%d", 
+      ST,
+      instruction->destination,
+      V[instruction->destination]);
+
+  ST = V[instruction->destination];
+
+  debug_print(" ⇒ ST=%d", 
+      ST);
 }
 
 // Fx1E I += Vx
 void do_addir(decoded_instruction* instruction) {
+  debug_print("\tADDIR: I=%d, V%d=%d", 
+      I,
+      instruction->destination,
+      V[instruction->destination]);
+
+  I += V[instruction->destination];
+  if (I > 0xFFFF){
+    I &= 0xFFFF;
+    V[0xF] = 1;
+  }
+
+  debug_print(" ⇒ I=%d\n", 
+      I);
 }
 
 // Fx29 I = address of sprite for digit Vx
@@ -409,16 +512,76 @@ void do_ldspr(decoded_instruction* instruction) {
   debug_print(" ⇒ I=%d\n", I);
 }
 
-// Fx33 mem[i:i+2] = big endian 3-digit decimal representation of Vx
+// Fx33 mem[I:I+2] = big endian 3-digit decimal representation of Vx
 void do_sddec(decoded_instruction* instruction) {
+  debug_print("\tSDDEC: I=%d, V%d=%d, mem[I]=%d, mem[I+1]=%d, mem[I+2]=%d", 
+      I,
+      instruction->source,
+      V[instruction->source],
+      mem[I],
+      mem[I+1],
+      mem[I+2]);
+
+  // TODO find proper way to implement this instruction
+  char s[4];
+  sprintf(s, "%d", V[instruction->source]);
+
+  if (strlen(s) == 1) {
+    mem[I]   = 0;
+    mem[I+1] = 0;
+    mem[I+2] = s[0] - '0';
+
+  } else if (strlen(s) == 2) {
+    mem[I]   = 0;
+    mem[I+1] = s[0] - '0';
+    mem[I+2] = s[1] - '0';
+
+  } else if (strlen(s) == 3) {
+    mem[I]   = s[0] - '0';
+    mem[I+1] = s[1] - '0';
+    mem[I+2] = s[2] - '0';
+  }
+
+  debug_print(" ⇒ mem[I]=%d, mem[I+1]=%d, mem[I+2]=%d\n", 
+      mem[I],
+      mem[I+1],
+      mem[I+2]);
 }
 
 // Fx55 store registers V0-Vx at mem[i:...]
 void do_sdr(decoded_instruction* instruction) {
+  int nregs = instruction->source;
+  int i;
+
+  debug_print("\tSDR: I=%d", I);
+  for (i = 0; i <= nregs; i++)
+    debug_print(", V[%d]=%d", i, V[i]);
+
+  for (i = 0; i <= nregs; i++)
+    mem[I+i] = V[i];
+
+  debug_print(" ⇒ ", I);
+  for (i = I; i <= I + nregs; i++)
+    debug_print("mem[%d]=%d, ", i, mem[i]);
+  debug_print("\n");
 }
 
 // Fx65 load mem[i:...] into V0-Vx
 void do_ldr(decoded_instruction* instruction) {
+  int nregs = instruction->source;
+  int i;
+
+  debug_print("\tLDR: I=%d", I);
+  for (i = I; i <= I + nregs; i++)
+    debug_print(", mem[%d]=%d", i, mem[i]);
+
+  for (i = 0; i <= nregs; i++)
+    V[i] = mem[i + I];
+
+  debug_print(" ⇒ ", I);
+  for (i = 0; i <= nregs; i++)
+    debug_print(", V[%d]=%d", i, V[i]);
+  debug_print("\n");
 }
 
 void (*opcodes[])(decoded_instruction*) = { do_sys, do_cls, do_ret, do_jp, do_call, do_skei, do_sknei, do_se, do_ldi, do_addi, do_ld, do_or, do_and, do_xor, do_add, do_sub, do_shr, do_subn, do_shl, do_skne, do_ldir, do_jpr, do_rnd, do_drw, do_skp, do_sknp, do_lddt, do_ldk, do_sddt, do_sdst, do_addir, do_ldspr, do_sddec, do_sdr, do_ldr };
@@ -449,8 +612,8 @@ int cycle() {
 
   decoded_instruction* i = decode(get_instruction(PC));
 
-  int status = do_instruction(i);
   PC += 2;
+  int status = do_instruction(i);
   cycle_count++;
   free(i);
   return status;

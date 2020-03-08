@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "decoder.h"
 #include "CC8.h"
@@ -81,7 +82,7 @@ void decodeA(int instruction, decoded_instruction* i) {
 }
 
 void decode9(int instruction, decoded_instruction* i) {
-  if ((instruction & 0xF) != 0x9000) {
+  if ((instruction & 0x900F) != 0x9000) {
     i->op = UNKNOWN;
     return;
   } 
@@ -201,6 +202,7 @@ decoded_instruction* decode(int instruction) {
   decodeOpcode[opcode](instruction, i);
 
   if (DEBUG) {
+    printf("0x%4X\t", instruction);
     print_instruction(i);
   }
 
