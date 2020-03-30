@@ -41,12 +41,9 @@ void debug_print(char *format_string, ...) {
 }
 
 // adapted copypaste from https://stackoverflow.com/questions/2984307/how-to-handle-key-pressed-in-a-linux-console-in-c
-// Issue: keypresses seem to be queued
-// repeating presses each count as one kbhit
-// but if kbhit is called before any hit it will return -1 forever
 int kbhit(void) {
     int ch = fgetc(stdin);
-    if(ch==-1)
+    if (ch == -1)
         rewind(stdin);
     return ch;
 }

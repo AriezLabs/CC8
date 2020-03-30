@@ -7,7 +7,7 @@ A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter/disassembler writte
 ## Features
 
 * Disassembler and debugger with color output
-* Terminal graphics using ▀,▄,█ chars
-* Cinematic ~10FPS framerate
+* Cutting edge terminal graphics using ▀,▄,█ chars
+* Unbearable framerate unless using [Alacritty](https://github.com/alacritty/alacritty)
 * Segfaults only occasionally
 
