@@ -40,7 +40,7 @@
   OPCODE(SDDEC)   \
   OPCODE(SDR)     \
   OPCODE(LDR)     \
-  OPCODE(UNKNOWN) 
+  OPCODE(UNKNOWN)
 
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
@@ -50,24 +50,38 @@
 #define INITIAL_PC 0x200
 
 const static int UNMAPPED_KEY = 9001;
-static int kbmap[256] = { 
-  [0 ... 255] = UNMAPPED_KEY,
-  ['x'] = 0x0,
-  ['1'] = 0x1,
-  ['2'] = 0x2,
-  ['3'] = 0x3,
-  ['q'] = 0x4,
-  ['w'] = 0x5,
-  ['e'] = 0x6,
-  ['a'] = 0x7,
-  ['s'] = 0x8,
-  ['d'] = 0x9,
-  ['z'] = 0xA,
-  ['c'] = 0xB,
-  ['4'] = 0xC,
-  ['r'] = 0xD,
-  ['f'] = 0xE,
-  ['v'] = 0xF,
+static int kbmap[256] = {
+        // KEYMAP
+
+        // original CHIP8 layout:
+        // 1 2 3 C
+        // 4 5 6 D
+        // 7 8 9 E
+        // A 0 B F
+
+        // mapped to QWERTY:
+        // 1 2 3 4
+        // q w e r
+        // a s d f
+        // z x c v
+
+        [0 ... 255] = UNMAPPED_KEY,
+        ['x'] = 0x0,
+        ['1'] = 0x1,
+        ['2'] = 0x2,
+        ['3'] = 0x3,
+        ['q'] = 0x4,
+        ['w'] = 0x5,
+        ['e'] = 0x6,
+        ['a'] = 0x7,
+        ['s'] = 0x8,
+        ['d'] = 0x9,
+        ['z'] = 0xA,
+        ['c'] = 0xB,
+        ['4'] = 0xC,
+        ['r'] = 0xD,
+        ['f'] = 0xE,
+        ['v'] = 0xF,
 };
 
 int binary_len;
@@ -85,23 +99,21 @@ extern short mem[];
 uint64_t drawbuf[32];
 int drawbuf_changed;
 
-// static - defined this way once for every source file
+// static - defined this way once for every source file including this header
 // (mutations won't change var for other source files)
-static const char* opcode_literals[] = {
-  FOREACH_OPCODE(GENERATE_STRING)
+static const char *opcode_literals[] = {
+        FOREACH_OPCODE(GENERATE_STRING)
 };
 
 static enum opcode {
-  FOREACH_OPCODE(GENERATE_ENUM)
+    FOREACH_OPCODE(GENERATE_ENUM)
 } opcode;
 
 typedef struct {
-  enum opcode op;
-  int source;
-  int destination;
-  int immediate;
+    enum opcode op;
+    int source;
+    int destination;
+    int immediate;
 } decoded_instruction;
-
-void beep();
 
 #endif

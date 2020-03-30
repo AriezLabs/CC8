@@ -1,6 +1,13 @@
-# CHIP-8 emulator in C
+# CC8 CHIP-8 interpreter
 
-Wishlist:
+A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter/disassembler written in C.
 
-* Works in the commandline using ▀,▄,█ chars as (100 MEGA)pixels
-* Can save and replay replays
+![demo](demo.gif)
+
+## Features
+
+* Disassembler and debugger with color output
+* Terminal graphics using ▀,▄,█ chars
+* Cinematic ~10FPS framerate
+* Segfaults only occasionally
+
