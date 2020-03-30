@@ -13,7 +13,7 @@
 #include "cpu.h"
 
 const char *version = "1.0";
-const char *nickname = ";
+const char *nickname = "broken pos";
 
 int DEBUG = 0;
 
